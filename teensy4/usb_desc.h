@@ -405,8 +405,8 @@ let me know?  http://forum.pjrc.com/forums/4-Suggestions-amp-Bug-Reports
   #define PRODUCT_NAME		{'T','e','e','n','s','y',' ','M','I','D','I'}
   #define PRODUCT_NAME_LEN	11
   #define EP0_SIZE		64
-  #define NUM_ENDPOINTS         4
-  #define NUM_INTERFACE		2
+  #define NUM_ENDPOINTS         6
+  #define NUM_INTERFACE		3
   #define SEREMU_INTERFACE      1	// Serial emulation
   #define SEREMU_TX_ENDPOINT    2
   #define SEREMU_TX_SIZE        64
@@ -422,8 +422,21 @@ let me know?  http://forum.pjrc.com/forums/4-Suggestions-amp-Bug-Reports
   #define MIDI_RX_ENDPOINT      3
   #define MIDI_RX_SIZE_12       64
   #define MIDI_RX_SIZE_480      512
+  #define MTP_INTERFACE		2	// MTP Disk
+  #define MTP_TX_ENDPOINT	4
+  #define MTP_TX_SIZE_12	64
+  #define MTP_TX_SIZE_480	512
+  #define MTP_RX_ENDPOINT	4
+  #define MTP_RX_SIZE_12	64
+  #define MTP_RX_SIZE_480	512
+  #define MTP_EVENT_ENDPOINT	5
+  #define MTP_EVENT_SIZE	32
+  #define MTP_EVENT_INTERVAL_12	10	// 10 = 10 ms
+  #define MTP_EVENT_INTERVAL_480 7	// 7 = 8 ms
   #define ENDPOINT2_CONFIG	ENDPOINT_RECEIVE_INTERRUPT + ENDPOINT_TRANSMIT_INTERRUPT
   #define ENDPOINT3_CONFIG	ENDPOINT_RECEIVE_BULK + ENDPOINT_TRANSMIT_BULK
+  #define ENDPOINT4_CONFIG	ENDPOINT_RECEIVE_BULK + ENDPOINT_TRANSMIT_BULK
+  #define ENDPOINT5_CONFIG	ENDPOINT_RECEIVE_UNUSED + ENDPOINT_TRANSMIT_INTERRUPT
 
 #elif defined(USB_MIDI4)
   #define VENDOR_ID		0x16C0

@@ -29,7 +29,7 @@
 
 #pragma once
 
-#if defined(USB_MTPDISK) || defined(USB_MTPDISK_SERIAL)
+#if defined(USB_MTPDISK) || defined(USB_MTPDISK_SERIAL) || defined(USB_MIDI)
 
 #include "core_pins.h"
 

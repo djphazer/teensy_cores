@@ -25,7 +25,7 @@
 // modified for SDFS by WMXZ
 // Nov 2020 adapted to SdFat-beta / SD combo
 
-#if defined(USB_MTPDISK) || defined(USB_MTPDISK_SERIAL)
+#if defined(USB_MTPDISK) || defined(USB_MTPDISK_SERIAL) || defined(USB_MIDI)
 
 #include "core_pins.h"
 #include "usb_dev.h"
