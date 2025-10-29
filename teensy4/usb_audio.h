@@ -30,7 +30,7 @@
 
 #pragma once
 
-#include "usb_desc.h"
+#include "usb_desc.h" // find out how many audio channels are configured
 #ifdef AUDIO_INTERFACE
 
 #define FEATURE_MAX_VOLUME 0xFF  // volume accepted from 0 to 0xFF
@@ -38,6 +38,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+extern uint32_t get_USB_SOF_timer(void);
 extern void usb_audio_configure();
 extern uint16_t usb_audio_receive_buffer[];
 extern uint16_t usb_audio_transmit_buffer[];
@@ -56,7 +57,7 @@ extern int usb_audio_get_feature(void *stp, uint8_t *data, uint32_t *datalen);
 struct usb_audio_features_struct {
   int change;  // set to 1 when any value is changed
   int mute;    // 1=mute, 0=unmute
-  int volume;  // volume from 0 to FEATURE_MAX_VOLUME, maybe should be float from 0.0 to 1.0
+  int volume[AUDIO_CHANNELS+1];  // volume from 0 to FEATURE_MAX_VOLUME, maybe should be float from 0.0 to 1.0
 };
 
 #ifdef __cplusplus
@@ -64,6 +65,8 @@ struct usb_audio_features_struct {
 
 class AudioInputUSB : public AudioStream
 {
+protected:	
+	static struct usb_audio_features_struct features;
 public:
 	AudioInputUSB(void) : AudioStream(0, NULL) { begin(); }
 	virtual void update(void);
@@ -71,37 +74,67 @@ public:
 	friend void usb_audio_receive_callback(unsigned int len);
 	friend int usb_audio_set_feature(void *stp, uint8_t *buf);
 	friend int usb_audio_get_feature(void *stp, uint8_t *data, uint32_t *datalen);
-	static struct usb_audio_features_struct features;
-	float volume(void) {
+	static float volume(int ch) {
 		if (features.mute) return 0.0;
-		return (float)(features.volume) * (1.0 / (float)FEATURE_MAX_VOLUME);
+		return (float)(features.volume[ch]) * (1.0 / (float)FEATURE_MAX_VOLUME);
 	}
+	static float volume(void) { return volume(1); }
+	static bool isMuted(void) { return features.mute != 0; }
+	static uint32_t get_SOF_timer(void) { return get_USB_SOF_timer(); }
 private:
 	static bool update_responsibility;
-	static audio_block_t *incoming_left;
-	static audio_block_t *incoming_right;
-	static audio_block_t *ready_left;
-	static audio_block_t *ready_right;
+	static audio_block_t *incoming[AUDIO_CHANNELS];
+	static audio_block_t *ready[AUDIO_CHANNELS];
 	static uint16_t incoming_count;
 	static uint8_t receive_flag;
 };
 
+// Only define higher channel count USB objects
+// if the descriptor permits them
+#if AUDIO_CHANNELS >= 4
+class AudioInputUSBQuad : public AudioInputUSB {};
+#if AUDIO_CHANNELS >= 6
+class AudioInputUSBHex  : public AudioInputUSB {};
+#if AUDIO_CHANNELS >= 8
+class AudioInputUSBOct  : public AudioInputUSB {};
+#endif // AUDIO_CHANNELS >= 8
+#endif // AUDIO_CHANNELS >= 6
+#endif // AUDIO_CHANNELS >= 4
+
 class AudioOutputUSB : public AudioStream
 {
 public:
-	AudioOutputUSB(void) : AudioStream(2, inputQueueArray) { begin(); }
+	AudioOutputUSB(void) : AudioStream(AUDIO_CHANNELS, inputQueueArray) { begin(); }
 	virtual void update(void);
 	void begin(void);
 	friend unsigned int usb_audio_transmit_callback(void);
+	bool isTransmitting(void) { return usb_audio_transmit_setting != 0; }
 private:
 	static bool update_responsibility;
-	static audio_block_t *left_1st;
-	static audio_block_t *left_2nd;
-	static audio_block_t *right_1st;
-	static audio_block_t *right_2nd;
+	static audio_block_t* outgoing[AUDIO_CHANNELS];
+	static audio_block_t* ready[AUDIO_CHANNELS];
 	static uint16_t offset_1st;
-	audio_block_t *inputQueueArray[2];
+	audio_block_t *inputQueueArray[AUDIO_CHANNELS];
+	
+	// variables to ensure correct sync when the sample rate
+	// involves a fractional number of samples per millisecond
+	static int normal_target; 	// usual number of samples to transmit
+	static int low_water;   	// transmit 1 fewer sample below this buffer level
+	static int high_water;      // transmit 1 extra sample above this buffer level
 };
+
+// Only define higher channel count USB objects
+// if the descriptor permits them
+#if AUDIO_CHANNELS >= 4
+class AudioOutputUSBQuad : public AudioOutputUSB {};
+#if AUDIO_CHANNELS >= 6
+class AudioOutputUSBHex  : public AudioOutputUSB {};
+#if AUDIO_CHANNELS >= 8
+class AudioOutputUSBOct  : public AudioOutputUSB {};
+#endif // AUDIO_CHANNELS >= 8
+#endif // AUDIO_CHANNELS >= 6
+#endif // AUDIO_CHANNELS >= 4
+
 #endif // __cplusplus
 
 #endif // AUDIO_INTERFACE
