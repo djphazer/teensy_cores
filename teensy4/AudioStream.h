@@ -35,11 +35,11 @@
  * hasn't yet been defined, then define it now:
  */
 #ifndef AUDIO_SAMPLE_RATE_EXACT
-#define AUDIO_SAMPLE_RATE_EXACT 44100.0f
+#define AUDIO_SAMPLE_RATE_EXACT 48000.0f
 #endif
 
 #ifndef AUDIO_SAMPLE_RATE_I
-#define AUDIO_SAMPLE_RATE_I 44100	//used for preprocessor conditionals in usb_desc.h
+#define AUDIO_SAMPLE_RATE_I 48000	//used for preprocessor conditionals in usb_desc.h
 #endif
 
 #ifndef AUDIO_SAMPLE_RATE
