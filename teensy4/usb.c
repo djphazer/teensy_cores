@@ -46,6 +46,7 @@
 #include "avr/pgmspace.h"
 #include <string.h>
 #include "debug/printf.h"
+#include "AudioStream.h"
 
 //#define LOG_SIZE  20
 //uint32_t transfer_log_head=0;
@@ -223,7 +224,7 @@ FLASHMEM void usb_init(void)
 	//  Recommended: enable all device interrupts including: USBINT, USBERRINT,
 	// Port Change Detect, USB Reset Received, DCSuspend.
 	USB1_USBINTR = USB_USBINTR_UE | USB_USBINTR_UEE | /* USB_USBINTR_PCE | */
-		USB_USBINTR_URE | USB_USBINTR_SLE;
+		USB_USBINTR_URE | USB_USBINTR_SRE | USB_USBINTR_SLE;
 	//_VectorsRam[IRQ_USB1+16] = &usb_isr;
 	attachInterruptVector(IRQ_USB1, &usb_isr);
 	NVIC_ENABLE_IRQ(IRQ_USB1);
@@ -256,7 +257,38 @@ FLASHMEM __attribute__((noinline)) void _reboot_Teensyduino_(void)
 	__builtin_unreachable();
 }
 
+//==================================================================
+static uint32_t USB_sof_timer;
+/**
+ * Update a "timer" showing how often SOF events are occurring.
+ */
+static void update_sof_timer(uint32_t status)
+{
+    static uint32_t lastISR;
+    static int count;
+	
+    if (status & USB_USBSTS_SRI)
+    {
+      if (--count <= 0)
+      {
+        uint32_t now = ARM_DWT_CYCCNT;
+		if (0 != USB_sof_timer) // not freshly booted
+			USB_sof_timer = now - lastISR;
+		else
+			USB_sof_timer = (uint32_t) ((long long) F_CPU_ACTUAL * USB_SOF_TIMER_COUNT / 1000);
+        lastISR = now;
+		
+		// re-start count, need 8x as many SOFs if we're high-speed
+        count = USB_SOF_TIMER_COUNT;
+		if (1 == usb_high_speed)
+			count <<= 3;
+      }
+    }	
+}
 
+uint32_t get_USB_SOF_timer(void) { return USB_sof_timer; }
+	
+//==================================================================
 void usb_isr(void)
 {
 	//printf("*");
@@ -265,6 +297,8 @@ void usb_isr(void)
 	//  status port reset, suspend, and current connect status.
 	uint32_t status = USB1_USBSTS;
 	USB1_USBSTS = status;
+	
+	update_sof_timer(status);
 
 	// USB_USBSTS_SLI - set to 1 when enters a suspend state from an active state
 	// USB_USBSTS_SRI - set at start of frame
@@ -696,9 +730,9 @@ static void endpoint0_setup(uint64_t setupdata)
 		break;
 	  case 0x81A2: // GET_CUR (wValue=0, wIndex=interface, wLength=len)
 		if (setup.wLength >= 3) {
-			endpoint0_buffer[0] = 44100 & 255;
-			endpoint0_buffer[1] = 44100 >> 8;
-			endpoint0_buffer[2] = 0;
+			endpoint0_buffer[0] = ((int)(AUDIO_SAMPLE_RATE_EXACT)) & 0xff;
+			endpoint0_buffer[1] = (((int)(AUDIO_SAMPLE_RATE_EXACT)) >> 8) & 0xff;
+			endpoint0_buffer[2] = (((int)(AUDIO_SAMPLE_RATE_EXACT)) >> 16) & 0xff;
 			endpoint0_transmit(endpoint0_buffer, 3, 0);
 			return;
 		}
@@ -884,7 +918,10 @@ static void endpoint0_complete(void)
 	}
 #endif
 #ifdef AUDIO_INTERFACE
-	if (setup.word1 == 0x02010121 || setup.word1 == 0x01000121 /* TODO: check setup.word2 */) {
+	if ((setup.word1 & 0xFFF0FFFF) == 0x02000121 // volume, any channel
+	  || setup.word1               == 0x01000121 // global mute /* TODO: check setup.word2 */
+		)	 
+	{
 		usb_audio_set_feature(&endpoint0_setupdata, endpoint0_buffer);
 	}
 #endif
