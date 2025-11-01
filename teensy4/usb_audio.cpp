@@ -77,11 +77,6 @@ volatile uint32_t feedback_accumulator;
 volatile uint32_t usb_audio_underrun_count = 0, usb_audio_overrun_count = 0;
 volatile uint32_t sync_counter = 0, callback_counter = 0;
 
-extern uint8_t s7ready;
-#define S7OUT(x) if (s7ready) Serial7.print(x)
-#undef S7OUT	
-#define S7OUT(...)
-	
 static void rx_event(transfer_t *t)
 {
 	if (t) {
@@ -93,11 +88,6 @@ static void rx_event(transfer_t *t)
 	arm_dcache_delete(&rx_buffer, AUDIO_RX_SIZE);
 	usb_receive(AUDIO_RX_ENDPOINT, &rx_transfer);
 }
-
-void my_USB_sync_callback(uint32_t,bool,uint32_t) __attribute__ ((weak));
-void my_USB_sync_callback(uint32_t,bool,uint32_t) {}
-static bool out_of_sync;
-extern void my_USB_sync_callback(uint32_t,bool,uint32_t);
 
 static void sync_event(transfer_t *t)
 {
@@ -127,8 +117,6 @@ static void sync_event(transfer_t *t)
 		feedback_accumulator = (apparent_rate / 1000.0f) * (1<<24);
 		
 	usb_audio_sync_feedback = feedback_accumulator >> usb_audio_sync_rshift;
-my_USB_sync_callback(feedback_accumulator,out_of_sync,usb_audio_sync_feedback);
-out_of_sync = false;
 	usb_prepare_transfer(&sync_transfer, &usb_audio_sync_feedback, usb_audio_sync_nbytes, 0);
 	arm_dcache_flush(&usb_audio_sync_feedback, usb_audio_sync_nbytes);
 	usb_transmit(AUDIO_SYNC_ENDPOINT, &sync_transfer);
@@ -181,10 +169,7 @@ static void copy_to_buffers(const uint32_t *src, audio_block_t *chans[AUDIO_CHAN
 		for (unsigned int j = 0; j < AUDIO_CHANNELS/2; j++) {
 			uint32_t n = *src++;
 			chans[j*2]->data[count+i] = n & 0xFFFF;
-			// NOTE: inverting this sample here because for some reason
-			// one of the channels has a phase issue...
-			chans[j*2+1]->data[count+i] = UINT16_MAX - (n >> 16);
-			// chans[j*2+1]->data[count+i] = n >> 16;
+			chans[j*2+1]->data[count+i] = (n >> 16) & 0xFFFF;
 		}
 		i++;
 	}
@@ -197,7 +182,6 @@ static void copy_to_buffers(const uint32_t *src, audio_block_t *chans[AUDIO_CHAN
 #if 1
 void usb_audio_receive_callback(unsigned int len)
 {
-digitalWriteFast(30,1);	
 	unsigned int count, avail;
 	audio_block_t *chans[AUDIO_CHANNELS];
 	//const uint16_t *data;
@@ -257,9 +241,6 @@ digitalWriteFast(30,1);
 						// If there were remaining bytes of audio, they will
 						// be dropped because there is nowhere to put them.
 						usb_audio_overrun_count++;
-S7OUT('o');	
-for (int i=0;i<AUDIO_CHANNELS;i++) { if (AudioInputUSB::ready[i]) AudioInputUSB::ready[i]->data[0] = AudioInputUSB::ready[i]->data[0]>0?-32000:+32000;} // deliberate click
-out_of_sync = true;
 					}
 					goto cleanup;
 				}
@@ -298,13 +279,11 @@ out_of_sync = true;
 	AudioInputUSB::incoming_count = count;
 	cleanup:
 		;
-digitalWriteFast(30,0);	
 }
 #endif
 
 void AudioInputUSB::update(void)
 {
-digitalWriteFast(31,1);	
 	// printf("AudioInputUSB::update\n");
 	audio_block_t *chans[AUDIO_CHANNELS];
 
@@ -321,8 +300,6 @@ digitalWriteFast(31,1);
 	if (usb_audio_receive_setting) {
 	for (int i = 0; i < AUDIO_CHANNELS; i++) {
 		if (!chans[i]) {
-S7OUT('u');						
-out_of_sync = true;
 			usb_audio_underrun_count++;
 			break;
 		}
@@ -334,7 +311,6 @@ out_of_sync = true;
 			release(chans[i]);
 		}
 	}
-digitalWriteFast(31,0);	
 }
 
 
@@ -396,16 +372,10 @@ static void copy_from_buffers(uint32_t *dst, int16_t *left, int16_t *right, unsi
  * to them. The USB transmit callback will then copy them to the transmit buffer
  * and release them at some point in the future.
  */
-#undef S7OUT	
-#define S7OUT(...)
-
 void AudioOutputUSB::update(void)
 {
 	audio_block_t* chans[AUDIO_CHANNELS];
 	int i;
-
-//USB_tx_provided += AUDIO_CHANNELS * AUDIO_BLOCK_SAMPLES * sizeof(int16_t);
-S7OUT('u');
 
 	// get the audio data
 	for (i=0;i<AUDIO_CHANNELS;i++)
@@ -428,7 +398,6 @@ S7OUT('u');
 	{
 		if (usb_audio_transmit_setting == 0) // not transmitting: just keep latest audio data ready
 		{
-S7OUT('b');
 			__disable_irq(); // avoid issues if USB interrupt occurs during this process
 			
 			for (i=0;i<AUDIO_CHANNELS;i++)
@@ -454,7 +423,6 @@ S7OUT('b');
 			
 			if (NULL == outgoing[0]) // just (re-)starting
 			{
-S7OUT('r');
 				// shuffle ready blocks up to outgoing
 				for (i=0;i<AUDIO_CHANNELS;i++)
 				{
@@ -467,13 +435,11 @@ S7OUT('r');
 			{
 				if (NULL == ready[0]) 
 				{
-S7OUT('q');
 					for (i=0;i<AUDIO_CHANNELS;i++)
 						ready[i] = chans[i];
 				} 
 				else 
 				{
-S7OUT('o');
 					// buffer overrun - PC is consuming too slowly
 					for (i=0;i<AUDIO_CHANNELS;i++)
 					{
@@ -491,7 +457,6 @@ S7OUT('o');
 	}
 	else // some invalid audio, can't queue any - discard it all
 	{
-S7OUT('d');
 		for (i=0;i<AUDIO_CHANNELS;i++)
 			if (NULL != chans[i])
 				release(chans[i]);
@@ -537,8 +502,6 @@ unsigned int usb_audio_transmit_callback(void)
 		
 	if (avail >= AudioOutputUSB::high_water) // risk of overflow
 		target++; // need to transmit an extra sample this time
-S7OUT((char) (avail/10+'A'));
-S7OUT((char) (target==44?'-':'+'));
 	while (len < target) // may take two iterations if not enough in outgoing[]
 	{
 		num = target - len; // number of samples left to transmit
