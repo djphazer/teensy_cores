@@ -463,15 +463,8 @@ let me know?  http://forum.pjrc.com/forums/4-Suggestions-amp-Bug-Reports
   #define SEREMU_RX_INTERVAL    2
   #define AUDIO_INTERFACE	1	// Audio (uses 3 consecutive interfaces)
   #define AUDIO_TX_ENDPOINT     3
-  #define AUDIO_CHANNELS        2 // Must be a multiple of 2
-  #define AUDIO_FREQUENCY       AUDIO_SAMPLE_RATE_EXACT
-  #define AUDIO_SAMPLE_BYTES    (sizeof ((audio_block_t*) 0)->data[0])
-  #define AUDIO_BIT_DEPTH       (AUDIO_SAMPLE_BYTES * 8)
-  #define AUDIO_TX_SIZE         ((int)(AUDIO_FREQUENCY / 1000U) + 1) * AUDIO_CHANNELS * AUDIO_SAMPLE_BYTES
   #define AUDIO_RX_ENDPOINT     3
-  #define AUDIO_RX_SIZE         AUDIO_TX_SIZE
   #define AUDIO_SYNC_ENDPOINT	4
-  #define AUDIO_POLLING_INTERVAL 1 // The bInterval polling value in microframes, 4 => 2^4 => 8 microframes == 1ms
   #define ENDPOINT2_CONFIG	ENDPOINT_RECEIVE_INTERRUPT + ENDPOINT_TRANSMIT_INTERRUPT
   #define ENDPOINT3_CONFIG	ENDPOINT_RECEIVE_ISOCHRONOUS + ENDPOINT_TRANSMIT_ISOCHRONOUS
   #define ENDPOINT4_CONFIG	ENDPOINT_RECEIVE_UNUSED + ENDPOINT_TRANSMIT_ISOCHRONOUS
