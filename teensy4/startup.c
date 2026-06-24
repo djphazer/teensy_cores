@@ -538,8 +538,8 @@ FLASHMEM void configure_external_ram()
 	if (size1 > 0) {
 		FLEXSPI2_FLSHA1CR0 = size1 << 10;
 		flexspi2_command(4, 0); // enter QPI mode
-		// look for a second PSRAM chip
-		uint8_t size2 = flexspi2_psram_size(size1 << 20);
+		// look for a second PSRAM chip - lol jk
+		uint8_t size2 = 0; // flexspi2_psram_size(size1 << 20);
 		external_psram_size = size1 + size2;
 		if (size2 > 0) {
 			FLEXSPI2_FLSHA2CR0 = size2 << 10;
