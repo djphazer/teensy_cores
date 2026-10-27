@@ -562,22 +562,6 @@ FLASHMEM void configure_external_ram()
 		FLEXSPI2_FLSHA2CR0 = 16 << 10;
 		memset(&extmem_smalloc_pool, 0, sizeof(extmem_smalloc_pool));
 	}
-	// Reduce MPU setting to detected size, avoid bus stall issue
-	// https://forum.pjrc.com/index.php?threads/78171/
-	uint32_t rasr;
-	switch (external_psram_size) {
-	  case 32: rasr = MEM_CACHE_WBWA | READWRITE | NOEXEC | SIZE_32M; break;
-	  case 24: rasr = MEM_CACHE_WBWA | READWRITE | NOEXEC | SIZE_24M; break;
-	  case 16: rasr = MEM_CACHE_WBWA | READWRITE | NOEXEC | SIZE_16M; break;
-	  case  8: rasr = MEM_CACHE_WBWA | READWRITE | NOEXEC | SIZE_8M; break;
-	  default: rasr = MEM_NOCACHE | NOACCESS | NOEXEC;
-	}
-	asm("dsb");
-	SCB_MPU_CTRL = 0;
-	SCB_MPU_RBAR = 0x70000000 | REGION(9); // FlexSPI2
-	SCB_MPU_RASR = rasr;
-	SCB_MPU_CTRL = SCB_MPU_CTRL_ENABLE;
-	asm("dsb");
 }
 
 #endif // ARDUINO_TEENSY41
