@@ -538,16 +538,16 @@ FLASHMEM void configure_external_ram()
 		uint8_t size2 = flexspi2_psram_size(size1 << 20);
 		external_psram_size = size1 + size2;
 		if (size2 > 0) {
-			// Configure last required FLSH*CR0 for double chip's
-			// actual size, in case of speculative fetches.  MPU
-			// is supposed to avoid it, but backup plan hopefully
-			// prevents bus stall if speculative access is made.
+			// Configure last required FLSH*CR0 for 32MB, in
+			// case of speculative fetches.  MPU is supposed
+			// to avoid it, but backup plan hopefully prevents
+			// bus stall if speculative access happens.
 			// https://forum.pjrc.com/index.php?threads/78171/
-			FLEXSPI2_FLSHA2CR0 = (size2 << 10) * 2;
+			FLEXSPI2_FLSHA2CR0 = 32 << 10;
 			flexspi2_command(4, size1 << 20);  // enter QPI mode
 		} else {
-			FLEXSPI2_FLSHA1CR0 = (size1 << 10) * 2;
-			FLEXSPI2_FLSHA2CR0 = 8 << 10;
+			FLEXSPI2_FLSHA1CR0 = 32 << 10;
+			FLEXSPI2_FLSHA2CR0 = 16 << 10;
 		}
 		// TODO: zero uninitialized EXTMEM variables
 		// TODO: copy from flash to initialize EXTMEM variables
@@ -558,8 +558,8 @@ FLASHMEM void configure_external_ram()
 	} else {
 		// No PSRAM
 		external_psram_size = 0;
-		FLEXSPI2_FLSHA1CR0 = 8 << 10;
-		FLEXSPI2_FLSHA2CR0 = 8 << 10;
+		FLEXSPI2_FLSHA1CR0 = 16 << 10;
+		FLEXSPI2_FLSHA2CR0 = 16 << 10;
 		memset(&extmem_smalloc_pool, 0, sizeof(extmem_smalloc_pool));
 	}
 	// Reduce MPU setting to detected size, avoid bus stall issue
